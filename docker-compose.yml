@@ -1,0 +1,26 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:5173"
+    environment:
+      API_PROXY_TARGET: http://functions:80
+    volumes:
+      - ./src:/app/src:ro
+      - ./public:/app/public:ro
+    depends_on:
+      - functions
+  functions:
+    build:
+      context: .
+      dockerfile: Dockerfile.functions
+    ports:
+      - "7071:80"
+    environment:
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_API_URL: ${AI_API_URL:-}
+      AI_MODEL: ${AI_MODEL:-}
+      GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY:-}

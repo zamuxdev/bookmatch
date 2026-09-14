@@ -1,0 +1,23 @@
+{
+  "name": "bookmatch-functions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/functions.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && func start",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.7.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2",
+    "@types/node": "^22.10.0"
+  }
+}

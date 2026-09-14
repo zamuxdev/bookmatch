@@ -1,0 +1,10 @@
+.git
+.agents
+.codex
+node_modules
+**/node_modules
+dist
+**/dist
+.env
+.env.*
+**/local.settings.json

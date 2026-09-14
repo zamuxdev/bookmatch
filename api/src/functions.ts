@@ -1,9 +1,11 @@
 import { aiProvider } from "./ai.js";
 import { app, type HttpRequest, type HttpResponseInit } from "@azure/functions";
 import {
+  createCheckoutPreference,
   enrichBook,
   inputSchema,
   movieSummary,
+  paymentSchema,
   PublicError,
   tmdb,
 } from "./services.js";
@@ -111,6 +113,34 @@ export async function recommendBooks(
     return failure(e);
   }
 }
+export async function createPayment(
+  req: HttpRequest,
+): Promise<HttpResponseInit> {
+  try {
+    if (!req.headers.get("content-type")?.includes("application/json"))
+      throw new PublicError(
+        415,
+        "INPUT",
+        "Envía los datos del libro en formato JSON.",
+      );
+    if (Number(req.headers.get("content-length")) > 4096)
+      throw new PublicError(413, "INPUT", "La solicitud es demasiado grande.");
+    const raw = await req.text();
+    if (Buffer.byteLength(raw) > 4096)
+      throw new PublicError(413, "INPUT", "La solicitud es demasiado grande.");
+    let parsed;
+    try {
+      parsed = paymentSchema.safeParse(JSON.parse(raw));
+    } catch {
+      throw new PublicError(400, "INPUT", "Los datos del libro no son válidos.");
+    }
+    if (!parsed.success)
+      throw new PublicError(400, "INPUT", "Los datos del libro no son válidos.");
+    return response(200, await createCheckoutPreference(parsed.data));
+  } catch (e) {
+    return failure(e);
+  }
+}
 app.http("searchMovies", {
   methods: ["GET"],
   authLevel: "anonymous",
@@ -122,4 +152,10 @@ app.http("recommendBooks", {
   authLevel: "anonymous",
   route: "recommend",
   handler: recommendBooks,
+});
+app.http("createPayment", {
+  methods: ["POST"],
+  authLevel: "anonymous",
+  route: "create-payment",
+  handler: createPayment,
 });

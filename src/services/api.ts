@@ -1,4 +1,4 @@
-import type { MatchResult, Movie } from "../types";
+import type { Book, MatchResult, Movie } from "../types";
 export async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -36,4 +36,15 @@ export const recommendBooks = (movies: Movie[]) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ movies: movies.map(({ id }) => ({ id })) }),
     signal: AbortSignal.timeout(45000),
+  });
+export const createPayment = (book: Book, price: number) =>
+  request<{ checkoutUrl: string; preferenceId: string }>("create-payment", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: book.title,
+      author: book.author,
+      price,
+    }),
+    signal: AbortSignal.timeout(30000),
   });

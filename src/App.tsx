@@ -9,12 +9,25 @@ import {
   LoaderCircle,
   Plus,
   Search,
+  ShoppingBag,
   Sparkles,
   X,
 } from "lucide-react";
 import Poster from "./components/Poster";
-import { recommendBooks, searchMovies } from "./services/api";
-import type { MatchResult, Movie } from "./types";
+import { createPayment, recommendBooks, searchMovies } from "./services/api";
+import type { Book, MatchResult, Movie } from "./types";
+const paymentMessages = {
+  success: "Compra de prueba completada correctamente.",
+  failure: "El pago de prueba no pudo completarse.",
+  pending: "El pago de prueba quedó pendiente.",
+} as const;
+type PaymentStatus = keyof typeof paymentMessages;
+function bookPrice(title: string) {
+  let hash = 0;
+  for (let i = 0; i < title.length; i++)
+    hash = (hash * 31 + title.charCodeAt(i)) >>> 0;
+  return 249 + (hash % 151);
+}
 const loadingMessages = [
   "Analizando tus películas...",
   "Encontrando temas en común...",
@@ -45,8 +58,17 @@ export default function App() {
     [stage, setStage] = useState<"select" | "loading" | "results">("select"),
     [result, setResult] = useState<MatchResult | null>(null),
     [step, setStep] = useState(0),
-    [searched, setSearched] = useState(false);
+    [searched, setSearched] = useState(false),
+    [buying, setBuying] = useState<string | null>(null),
+    [buyError, setBuyError] = useState(""),
+    [paymentStatus, setPaymentStatus] = useState<PaymentStatus | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const status = new URLSearchParams(window.location.search).get("payment");
+    if (!status) return;
+    if (status in paymentMessages) setPaymentStatus(status as PaymentStatus);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     setMatches([]);
@@ -112,6 +134,22 @@ export default function App() {
       setStage("select");
     }
   }
+  async function buy(book: Book) {
+    if (buying) return;
+    setBuyError("");
+    setBuying(book.title);
+    try {
+      const { checkoutUrl } = await createPayment(book, bookPrice(book.title));
+      window.location.href = checkoutUrl;
+    } catch (e) {
+      setBuyError(
+        e instanceof Error
+          ? e.message
+          : "Algo salió mal. Inténtalo de nuevo.",
+      );
+      setBuying(null);
+    }
+  }
   function reset() {
     setSelected([]);
     setResult(null);
@@ -135,6 +173,22 @@ export default function App() {
         </a>
       </header>
       <main>
+        {paymentStatus && (
+          <div
+            className={`payment-banner payment-${paymentStatus}`}
+            role="status"
+          >
+            <p>{paymentMessages[paymentStatus]}</p>
+            <span>Pago simulado · No se realizó ningún cargo real.</span>
+            <button
+              className="icon-button"
+              onClick={() => setPaymentStatus(null)}
+              aria-label="Cerrar aviso de pago"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
         {stage === "select" && (
           <>
             <section className="hero">
@@ -442,7 +496,9 @@ export default function App() {
               </p>
             )}
             <div className="books-grid">
-              {result.recommendations.map((b, i) => (
+              {result.recommendations.map((b, i) => {
+                const price = bookPrice(b.title);
+                return (
                 <article className="book-card" key={b.title}>
                   <div className={`book-art book-art-${i}`}>
                     <span className="book-number">0{i + 1}</span>
@@ -480,10 +536,38 @@ export default function App() {
                         Ver este libro <ArrowUpRight size={15} />
                       </a>
                     )}
+                    <div className="buy-section">
+                      <button
+                        className="buy-button"
+                        disabled={buying !== null}
+                        onClick={() => buy(b)}
+                      >
+                        {buying === b.title ? (
+                          <>
+                            <LoaderCircle className="spin" size={15} />
+                            Conectando con Mercado Pago…
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingBag size={15} />
+                            Comprar libro · ${price} MXN
+                          </>
+                        )}
+                      </button>
+                      <span className="sandbox-note">
+                        Pago simulado · No se realizará ningún cargo real.
+                      </span>
+                    </div>
                   </div>
                 </article>
-              ))}
+                );
+              })}
             </div>
+            {buyError && (
+              <p className="error-message" role="alert">
+                {buyError}
+              </p>
+            )}
             <p className="score-note">
               Los porcentajes de afinidad son una interpretación de tus gustos hecha por IA.
             </p>

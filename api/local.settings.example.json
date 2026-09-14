@@ -7,7 +7,9 @@
     "AI_API_KEY": "",
     "AI_API_URL": "https://your-provider.example/v1/chat/completions",
     "AI_MODEL": "",
-    "GOOGLE_BOOKS_API_KEY": ""
+    "GOOGLE_BOOKS_API_KEY": "",
+    "MERCADOPAGO_ACCESS_TOKEN": "",
+    "APP_BASE_URL": "http://localhost:5173"
   },
   "Host": { "CORS": "http://localhost:5173" }
 }

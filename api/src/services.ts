@@ -33,6 +33,76 @@ export const outputSchema = z.object({
       (books) => new Set(books.map((b) => normalize(b.title))).size === 3,
     ),
 });
+export const paymentSchema = z
+  .object({
+    title: z.string().trim().min(1).max(250),
+    author: z.string().trim().min(1).max(200),
+    price: z.number().min(1).max(10000),
+  })
+  .strict();
+const preferenceSchema = z.object({
+  id: z.string().min(1),
+  init_point: z.string().optional(),
+  sandbox_init_point: z.string().optional(),
+});
+export async function createCheckoutPreference(
+  payment: z.infer<typeof paymentSchema>,
+) {
+  const token = setting("MERCADOPAGO_ACCESS_TOKEN");
+  let base: URL;
+  try {
+    base = new URL(setting("APP_BASE_URL"));
+    if (!["http:", "https:"].includes(base.protocol)) throw new Error();
+  } catch {
+    throw new PublicError(
+      503,
+      "CONFIGURATION",
+      "Falta configurar APP_BASE_URL con una URL válida en el backend.",
+    );
+  }
+  const isLocal = ["localhost", "127.0.0.1", "[::1]"].includes(base.hostname);
+  const data = await jsonFetch(
+    "https://api.mercadopago.com/checkout/preferences",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        items: [
+          {
+            title: payment.title,
+            description: `Libro recomendado por BookMatch · ${payment.author}`,
+            quantity: 1,
+            currency_id: "MXN",
+            unit_price: payment.price,
+          },
+        ],
+        back_urls: {
+          success: `${base.origin}/?payment=success`,
+          failure: `${base.origin}/?payment=failure`,
+          pending: `${base.origin}/?payment=pending`,
+        },
+        // Mercado Pago rechaza auto_return cuando las back_urls son locales.
+        ...(isLocal ? {} : { auto_return: "approved" }),
+      }),
+    },
+    10000,
+    "PAYMENTS",
+  );
+  const preference = preferenceSchema.safeParse(data);
+  const checkoutUrl = preference.success
+    ? preference.data.sandbox_init_point || preference.data.init_point
+    : null;
+  if (!preference.success || !checkoutUrl)
+    throw new PublicError(
+      502,
+      "PAYMENTS_ERROR",
+      "El servicio de pagos no está disponible. Inténtalo de nuevo.",
+    );
+  return { checkoutUrl, preferenceId: preference.data.id };
+}
 export function setting(name: string) {
   const value = process.env[name];
   if (!value)
@@ -71,7 +141,9 @@ export async function jsonFetch(
       `${service}_ERROR`,
       service === "AI"
         ? "El servicio de recomendaciones no está disponible. Inténtalo de nuevo."
-        : "No pudimos consultar el catálogo de películas. Inténtalo de nuevo.",
+        : service === "PAYMENTS"
+          ? "El servicio de pagos no está disponible. Inténtalo de nuevo."
+          : "No pudimos consultar el catálogo de películas. Inténtalo de nuevo.",
     );
   }
 }

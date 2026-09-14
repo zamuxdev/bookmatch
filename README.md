@@ -63,6 +63,8 @@ Configúralas en `.env`. Solo se inyectan en la API; nunca se exponen al navegad
 | `AI_API_URL` | Sí | URL completa del endpoint compatible con Chat Completions. |
 | `AI_MODEL` | Sí | Modelo que generará las recomendaciones. |
 | `GOOGLE_BOOKS_API_KEY` | No | Clave opcional para asociar las consultas a tu cuota de Google Books. |
+| `MERCADOPAGO_ACCESS_TOKEN` | Sí (para pagos) | Access token de **pruebas** de Mercado Pago (prefijo `TEST-`). Solo lo usa el backend; nunca se expone al navegador. |
+| `APP_BASE_URL` | Sí (para pagos) | URL pública de la aplicación para las `back_urls` del checkout. Local: `http://localhost:5173`. Producción: la URL de tu Static Web App. |
 
 El proveedor de IA debe aceptar respuestas JSON. Puedes consultar `.env.example` para ver el formato esperado.
 
@@ -80,14 +82,25 @@ El proveedor de IA debe aceptar respuestas JSON. Puedes consultar `.env.example`
 
 ## API local
 
-La API expone dos endpoints:
+La API expone tres endpoints:
 
 ```text
 GET  /api/movies?query=interstellar
 POST /api/recommend
+POST /api/create-payment
 ```
 
+`POST /api/create-payment` acepta `{ "title", "author", "price" }`, crea una preferencia de pago en Mercado Pago y devuelve `{ "checkoutUrl", "preferenceId" }`. El servidor fija `currency_id` (`MXN`) y `quantity` (1); el cliente no puede cambiarlos.
+
 El frontend usa rutas relativas (`/api`), por lo que en desarrollo Vite redirige las peticiones al contenedor de Azure Functions.
+
+## Pagos de demostración (sandbox)
+
+Las tarjetas de los libros recomendados muestran un precio ficticio en MXN y un botón para simular la compra con [Mercado Pago Checkout Pro](https://www.mercadopago.com.mx/developers/es/docs/checkout-pro/landing). Es una demostración académica: **usa únicamente credenciales de prueba (`TEST-...`) y tarjetas de prueba de Mercado Pago; no se mueve dinero real** y BookMatch no vende libros.
+
+- Los precios son ficticios, determinísticos por título y no provienen de la IA.
+- El Access Token se configura solo en el backend (`MERCADOPAGO_ACCESS_TOKEN`); nunca viaja desde ni hacia el navegador.
+- Al terminar el checkout, Mercado Pago regresa a BookMatch con `?payment=success|failure|pending` y la interfaz muestra un aviso.
 
 ## Pruebas y compilación
 

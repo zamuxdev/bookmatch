@@ -580,7 +580,7 @@ export default function App() {
       <footer>
         <a className="brand footer-brand" href="/">
           {" "}
-          <BookOpen size={17} /> BOOKMATCH<span className="brand-dot">.</span>
+          <BookOpen size={17} /> BOOKMATCH!<span className="brand-dot">.</span>
         </a>
         <p>Por amor a las buenas historias.</p>
         <span>

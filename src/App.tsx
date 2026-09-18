@@ -210,7 +210,7 @@ export default function App() {
                     <Film size={16} />
                   </span>
                   <span>
-                    A tu gusto, con un toque de inteligencia natural.
+                    A tu gusto, con un toque de inteligencia artificial.
                   </span>
                 </div>
               </div>
